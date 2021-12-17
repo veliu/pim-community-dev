@@ -292,7 +292,7 @@ class CleanRemovedAttributesFromProductAndProductModelCommand extends Command
             )
         );
 
-        $this->eventDispatcher->dispatch(AttributeEvents::POST_CLEAN);
+        $this->eventDispatcher->dispatch(new \stdClass(), AttributeEvents::POST_CLEAN);
     }
 
     private function checkBlacklistedAttributeCodesToCleanAllExist(

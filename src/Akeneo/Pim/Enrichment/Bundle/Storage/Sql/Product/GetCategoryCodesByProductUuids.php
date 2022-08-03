@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Akeneo\Pim\Enrichment\Bundle\Storage\Sql\Product;
 
+use Akeneo\Pim\Enrichment\Component\Product\Query\GetCategoryCodesByProductUuidsInterface;
 use Doctrine\DBAL\Connection;
 use Ramsey\Uuid\UuidInterface;
 use Webmozart\Assert\Assert;

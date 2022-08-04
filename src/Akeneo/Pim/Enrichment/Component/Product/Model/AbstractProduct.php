@@ -14,6 +14,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
+use Webmozart\Assert\Assert;
 
 /**
  * Abstract product
@@ -96,6 +97,7 @@ abstract class AbstractProduct implements ProductInterface
 
     public function setUuid(UuidInterface $uuid): ProductInterface
     {
+        Assert::same($uuid->getVersion(), 4);
         $this->uuid = $uuid;
 
         return $this;

@@ -103,6 +103,28 @@ class ConvertStandardFormatIntoUserIntentsHandlerIntegration extends EnrichmentP
         ], $handledStamp->getResult());
     }
 
+    /** @test */
+    public function it_converts_product_association_with_uuids(): void
+    {
+        $associatedProduct = $this->get('pim_catalog.repository.product')->findOneByIdentifier('associated_product');
+        Assert::assertNotNull($associatedProduct);
+
+        $envelope = $this->get('pim_enrich.product.query_message_bus')->dispatch(new GetUserIntentsFromStandardFormat([
+            'identifier' => 'my_product',
+            'associations' => [
+                'X_SELL' => [
+                    'products' => [$associatedProduct->getUuid()->toString()]
+                ]
+            ]
+        ]));
+        // get the value that was returned by the last message handler
+        $handledStamp = $envelope->last(HandledStamp::class);
+        Assert::assertEqualsCanonicalizing([
+            new ReplaceAssociatedProducts('X_SELL', [$associatedProduct->getUuid()])
+        ], $handledStamp->getResult());
+    }
+
+
     protected function setUp(): void
     {
         parent::setUp();

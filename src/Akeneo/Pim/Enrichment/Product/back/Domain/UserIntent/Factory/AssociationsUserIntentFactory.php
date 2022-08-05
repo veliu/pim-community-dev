@@ -8,6 +8,7 @@ use Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\Association\ReplaceAsso
 use Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\Association\ReplaceAssociatedProductModels;
 use Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\Association\ReplaceAssociatedProducts;
 use Akeneo\Tool\Component\StorageUtils\Exception\InvalidPropertyTypeException;
+use Ramsey\Uuid\Uuid;
 
 /**
  * @copyright 2022 Akeneo SAS (https://www.akeneo.com)
@@ -43,7 +44,13 @@ class AssociationsUserIntentFactory implements UserIntentFactory
                 $this->validateScalarArray('association', $associationsByEntity);
             }
             if (\array_key_exists('products', $associations)) {
-                $userIntents[] = new ReplaceAssociatedProducts((string) $associationType, $associations['products']);
+                // TODO: is isValid enough?
+                if (Uuid::isValid($associations['products'][0])) {
+                    $productAssociations = \array_map(fn (string $uuid) => Uuid::fromString($uuid), $associations['products']);
+                } else {
+                    $productAssociations = $associations['products'];
+                }
+                $userIntents[] = new ReplaceAssociatedProducts((string) $associationType, $productAssociations);
             }
             if (\array_key_exists('product_models', $associations)) {
                 $userIntents[] = new ReplaceAssociatedProductModels((string) $associationType, $associations['product_models']);

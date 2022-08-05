@@ -23,6 +23,7 @@ use Akeneo\Pim\Enrichment\Product\Domain\Query\GetViewableProductModels;
 use Akeneo\Pim\Enrichment\Product\Domain\Query\GetViewableProducts;
 use Akeneo\Tool\Component\StorageUtils\Updater\ObjectUpdaterInterface;
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\DBAL\Connection;
 use PhpSpec\ObjectBehavior;
 use Prophecy\Argument;
 
@@ -35,9 +36,10 @@ class AssociationUserIntentCollectionApplierSpec extends ObjectBehavior
     function let(
         ObjectUpdaterInterface $productUpdater,
         GetViewableProducts $getViewableProducts,
-        GetViewableProductModels $getViewableProductModels
+        GetViewableProductModels $getViewableProductModels,
+        Connection $connection,
     ) {
-        $this->beConstructedWith($productUpdater, $getViewableProducts, $getViewableProductModels);
+        $this->beConstructedWith($productUpdater, $getViewableProducts, $getViewableProductModels, $connection);
     }
 
     function it_is_initializable()
@@ -68,6 +70,38 @@ class AssociationUserIntentCollectionApplierSpec extends ObjectBehavior
         $productUpdater->update($product, ['associations' => [
             'X_SELL' => [
                 'products' => ['baz', 'foo', 'bar'],
+            ]
+        ]])->shouldBeCalledOnce();
+
+        $this->apply($collection, $product, 42);
+    }
+
+    function it_applies_associate_products_with_uuids(
+        ObjectUpdaterInterface $productUpdater,
+        ProductInterface $product,
+        Connection $connection,
+    ) {
+        $product->setIdentifier('main_product');
+        $associatedProduct = new Product();
+        $associatedProduct->setIdentifier('associated_product');
+
+        $newAssociatedProduct1 = new Product();
+        $newAssociatedProduct1->setIdentifier('new_associated_product1');
+        $newAssociatedProduct2 = new Product();
+        $newAssociatedProduct2->setIdentifier('new_associated_product2');
+
+        $product->getAssociatedProducts('X_SELL')->shouldBeCalledOnce()->willReturn(
+            new ArrayCollection([$associatedProduct])
+        );
+        $collection = new AssociationUserIntentCollection([
+            new AssociateProducts('X_SELL', [$newAssociatedProduct1->getUuid(), $newAssociatedProduct2->getUuid()])
+        ]);
+
+        $connection->fetchFirstColumn(Argument::cetera())->shouldBeCalledOnce()->willReturn(['new_associated_product1', 'new_associated_product2']);
+
+        $productUpdater->update($product, ['associations' => [
+            'X_SELL' => [
+                'products' => ['associated_product', 'new_associated_product1', 'new_associated_product2'],
             ]
         ]])->shouldBeCalledOnce();
 
@@ -175,6 +209,35 @@ class AssociationUserIntentCollectionApplierSpec extends ObjectBehavior
         $this->apply($collection, $product, 42);
     }
 
+    function it_applies_dissociate_products_with_uuids(
+        ObjectUpdaterInterface $productUpdater,
+        ProductInterface $product,
+        Connection $connection,
+    ) {
+        $associatedProduct1 = new Product();
+        $associatedProduct1->setIdentifier('baz');
+        $associatedProduct2 = new Product();
+        $associatedProduct2->setIdentifier('qux');
+        $associatedProducts = [$associatedProduct1, $associatedProduct2];
+
+        $product->getAssociatedProducts('X_SELL')->shouldBeCalledOnce()->willReturn(
+            new ArrayCollection($associatedProducts)
+        );
+        $collection = new AssociationUserIntentCollection([
+            new DissociateProducts('X_SELL', [$associatedProduct1->getUuid()]),
+        ]);
+
+        $connection->fetchFirstColumn(Argument::cetera())->shouldBeCalledOnce()->willReturn(['baz']);
+
+        $productUpdater->update($product, ['associations' => [
+            'X_SELL' => [
+                'products' => ['qux'],
+            ]
+        ]])->shouldBeCalledOnce();
+
+        $this->apply($collection, $product, 42);
+    }
+
     function it_does_nothing_if_product_to_dissociate_is_not_associated(
         ObjectUpdaterInterface $productUpdater,
         ProductInterface $product
@@ -236,6 +299,53 @@ class AssociationUserIntentCollectionApplierSpec extends ObjectBehavior
         $collection = new AssociationUserIntentCollection([
             new ReplaceAssociatedProducts('X_SELL', ['quux', 'quuz', 'corge']),
         ]);
+
+        // product is updated with new values and non viewable product identifiers
+        $productUpdater->update($product, ['associations' => [
+            'X_SELL' => [
+                'products' => ['non_viewable_product', 'quux', 'quuz', 'corge'],
+            ]
+        ]])->shouldBeCalledOnce();
+
+        $getViewableProducts->fromProductIdentifiers(['baz', 'non_viewable_product'], 42)
+            ->shouldBeCalled()
+            ->willReturn(['baz']);
+
+        $this->apply($collection, $product, 42);
+    }
+
+    function it_replaces_associated_products_with_uuids(
+        ObjectUpdaterInterface $productUpdater,
+        GetViewableProducts $getViewableProducts,
+        Connection $connection,
+        ProductInterface $product,
+    ) {
+        $associatedProduct1 = new Product();
+        $associatedProduct1->setIdentifier('baz');
+        $associatedProduct2 = new Product();
+        $associatedProduct2->setIdentifier('non_viewable_product');
+        $associatedProducts = [$associatedProduct1, $associatedProduct2];
+
+        $product->getAssociatedProducts('X_SELL')->shouldBeCalledOnce()->willReturn(
+            new ArrayCollection($associatedProducts)
+        );
+
+        $newAssociatedProduct1 = new Product();
+        $newAssociatedProduct1->setIdentifier('quux');
+        $newAssociatedProduct2 = new Product();
+        $newAssociatedProduct2->setIdentifier('quuz');
+        $newAssociatedProduct3 = new Product();
+        $newAssociatedProduct3->setIdentifier('corge');
+
+        $collection = new AssociationUserIntentCollection([
+            new ReplaceAssociatedProducts('X_SELL', [
+                $newAssociatedProduct1->getUuid(),
+                $newAssociatedProduct2->getUuid(),
+                $newAssociatedProduct3->getUuid(),
+            ]),
+        ]);
+
+        $connection->fetchFirstColumn(Argument::cetera())->shouldBeCalledOnce()->willReturn(['quux', 'quuz', 'corge']);
 
         // product is updated with new values and non viewable product identifiers
         $productUpdater->update($product, ['associations' => [

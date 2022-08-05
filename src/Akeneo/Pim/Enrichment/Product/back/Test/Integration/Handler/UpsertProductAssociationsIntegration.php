@@ -301,6 +301,29 @@ class UpsertProductAssociationsIntegration extends EnrichmentProductTestCase
         Assert::assertEqualsCanonicalizing(['group1'], $this->getAssociatedGroupIdentifiers($myProduct, 'TWO_WAY'));
     }
 
+    /** @test */
+    public function it_sends_multiple_product_association_user_intents_with_uuids(): void
+    {
+        $this->productRepository = $this->get('pim_catalog.repository.product');
+        $this->createProduct('former_associated_product', []);
+        $formerAssociatedProduct = $this->productRepository->findOneByIdentifier('former_associated_product');
+        $this->createProduct('new_associated_product', []);
+        $newAssociatedProduct = $this->productRepository->findOneByIdentifier('new_associated_product');
+
+        $this->createProduct('my_product', [new ReplaceAssociatedProducts('X_SELL', [$formerAssociatedProduct->getUuid()])]);
+        $product = $this->productRepository->findOneByIdentifier('my_product');
+
+        Assert::assertEqualsCanonicalizing(['former_associated_product'], $this->getAssociatedProductIdentifiers($product));
+
+        $command = UpsertProductCommand::createFromCollection($this->getUserId('peter'), 'my_product', [
+            new AssociateProducts('X_SELL', [$newAssociatedProduct->getUuid()]),
+            new DissociateProducts('X_SELL', [$formerAssociatedProduct->getUuid()]),
+        ]);
+        $this->commandMessageBus->dispatch($command);
+
+        Assert::assertEqualsCanonicalizing(['new_associated_product'], $this->getAssociatedProductIdentifiers($product));
+    }
+
     private function createGroup(string $groupCode): void
     {
         $group = $this->get('pim_catalog.factory.group')->createGroup('RELATED');

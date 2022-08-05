@@ -2,6 +2,7 @@
 
 namespace Specification\Akeneo\Pim\Enrichment\Product\Domain\UserIntent\Factory;
 
+use Akeneo\Pim\Enrichment\Component\Product\Model\Product;
 use Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\Association\ReplaceAssociatedGroups;
 use Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\Association\ReplaceAssociatedProductModels;
 use Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\Association\ReplaceAssociatedProducts;
@@ -44,6 +45,23 @@ class AssociationsUserIntentFactorySpec extends ObjectBehavior
             new ReplaceAssociatedProducts('11', ['identifier1']),
             new ReplaceAssociatedProductModels('11', []),
             new ReplaceAssociatedGroups('11', []),
+        ]);
+    }
+
+    function it_returns_product_association_user_intents_with_uuids()
+    {
+        $product1 = new Product();
+        $product1->setIdentifier('identifier1');
+        $product2 = new Product();
+        $product2->setIdentifier('identifier2');
+        $this->create('associations', [
+            'PACK' => [
+                'products' => [$product1->getUuid()->toString(), $product2->getUuid()->toString()],
+                'product_models' => [],
+                'groups' => [],
+            ],
+        ])->shouldBeLike([
+            new ReplaceAssociatedProducts('X_SELL', [$product1->getUuid(), $product2->getUuid()])
         ]);
     }
 

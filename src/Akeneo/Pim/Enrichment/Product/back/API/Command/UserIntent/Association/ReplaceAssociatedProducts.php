@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\Association;
 
+use Akeneo\Pim\Enrichment\Product\API\ValueObject\ProductUuid;
 use Webmozart\Assert\Assert;
 
 /**
@@ -16,13 +17,15 @@ use Webmozart\Assert\Assert;
 final class ReplaceAssociatedProducts implements AssociationUserIntent
 {
     /**
-     * @param array<string> $productIdentifiers
+     * @param array<string | ProductUuid> $productIdentifiersOrUuids
      */
     public function __construct(
         private string $associationType,
-        private array $productIdentifiers,
+        private array  $productIdentifiersOrUuids,
     ) {
-        Assert::allStringNotEmpty($productIdentifiers);
+        // TODO: how to check if stringNotEmpty or UuidsNotNull
+        //Assert::allStringNotEmpty($productIdentifiersOrUuids);
+        Assert::notEmpty($this->productIdentifiersOrUuids);
         Assert::stringNotEmpty($associationType);
     }
 
@@ -32,10 +35,10 @@ final class ReplaceAssociatedProducts implements AssociationUserIntent
     }
 
     /**
-     * @return array<string>
+     * @return array<string | ProductUuid>
      */
-    public function productIdentifiers(): array
+    public function productIdentifiersOrUuids(): array
     {
-        return $this->productIdentifiers;
+        return $this->productIdentifiersOrUuids;
     }
 }

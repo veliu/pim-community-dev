@@ -22,6 +22,8 @@ use Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\UserIntent;
 use Akeneo\Pim\Enrichment\Product\Domain\Query\GetViewableProductModels;
 use Akeneo\Pim\Enrichment\Product\Domain\Query\GetViewableProducts;
 use Akeneo\Tool\Component\StorageUtils\Updater\ObjectUpdaterInterface;
+use Doctrine\DBAL\Connection;
+use Ramsey\Uuid\UuidInterface;
 use Webmozart\Assert\Assert;
 
 /**
@@ -37,7 +39,8 @@ final class AssociationUserIntentCollectionApplier implements UserIntentApplier
     public function __construct(
         private ObjectUpdaterInterface $productUpdater,
         private GetViewableProducts $getViewableProducts,
-        private GetViewableProductModels $getViewableProductModels
+        private GetViewableProductModels $getViewableProductModels,
+        private Connection $connection,
     ) {
     }
 
@@ -120,8 +123,11 @@ final class AssociationUserIntentCollectionApplier implements UserIntentApplier
      */
     private function userIntentEntityAssociations(AssociationUserIntent $associationUserIntent, string $entityType): array
     {
-        if ($entityType === self::PRODUCTS && \method_exists($associationUserIntent, 'productIdentifiers')) {
-            return $associationUserIntent->productIdentifiers();
+        if ($entityType === self::PRODUCTS && \method_exists($associationUserIntent, 'productIdentifiersOrUuids')) {
+            if ($associationUserIntent->productIdentifiersOrUuids()[0] instanceof UuidInterface) {
+                return $this->getIdentifiersFromUuids($associationUserIntent->productIdentifiersOrUuids());
+            }
+            return $associationUserIntent->productIdentifiersOrUuids();
         } elseif ($entityType === self::PRODUCT_MODELS && \method_exists($associationUserIntent, 'productModelCodes')) {
             return $associationUserIntent->productModelCodes();
         } elseif ($entityType === self::GROUPS && \method_exists($associationUserIntent, 'groupCodes')) {
@@ -184,5 +190,20 @@ final class AssociationUserIntentCollectionApplier implements UserIntentApplier
         }
 
         return \array_values(\array_unique(\array_merge($nonViewableEntities, $entityAssociations)));
+    }
+
+    /**
+     * @param string[] $uuids
+     * @return UuidInterface[]
+     */
+    private function getIdentifiersFromUuids(array $uuids): array
+    {
+        $uuidAsBytes = \array_map(fn (UuidInterface $uuid) => $uuid->getBytes(), $uuids);
+
+        return $this->connection->fetchFirstColumn(
+            'SELECT identifier FROM pim_catalog_product WHERE uuid in (:uuidAsBytes)',
+            ['uuidAsBytes' => $uuidAsBytes],
+            ['uuidAsBytes' => Connection::PARAM_STR_ARRAY]
+        );
     }
 }

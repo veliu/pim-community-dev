@@ -14,7 +14,7 @@ use Webmozart\Assert\Assert;
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
 final class AssociateProducts implements AssociationUserIntent
-{
+{// Duplicate all association user intents to handle uuids
     /**
      * @param array<string | UuidInterface> $productIdentifiersOrUuids
      */

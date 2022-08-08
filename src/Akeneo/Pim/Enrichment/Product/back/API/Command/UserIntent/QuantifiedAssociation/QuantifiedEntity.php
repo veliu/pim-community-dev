@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\QuantifiedAssociation;
 
+use Ramsey\Uuid\UuidInterface;
 use Webmozart\Assert\Assert;
 
 /**
@@ -12,15 +13,16 @@ use Webmozart\Assert\Assert;
  */
 final class QuantifiedEntity
 {
-    public function __construct(private string $entityIdentifier, private int $quantity)
+    public function __construct(private string | UuidInterface $entityIdentifierOrUuid, private int $quantity)
     {
-        Assert::stringNotEmpty($this->entityIdentifier);
+        //TODO: check if string not empty or Uuid
+        //Assert::stringNotEmpty($this->entityIdentifierOrUuid);
         Assert::greaterThan($this->quantity, 0);
     }
 
-    public function entityIdentifier(): string
+    public function entityIdentifierOrUuid(): string | UuidInterface
     {
-        return $this->entityIdentifier;
+        return $this->entityIdentifierOrUuid;
     }
 
     public function quantity(): int

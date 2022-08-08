@@ -18,6 +18,8 @@ use Akeneo\Pim\Enrichment\Product\API\Command\UserIntent\UserIntent;
 use Akeneo\Pim\Enrichment\Product\Domain\Query\GetViewableProductModels;
 use Akeneo\Pim\Enrichment\Product\Domain\Query\GetViewableProducts;
 use Akeneo\Tool\Component\StorageUtils\Updater\ObjectUpdaterInterface;
+use Doctrine\DBAL\Connection;
+use Ramsey\Uuid\UuidInterface;
 use Webmozart\Assert\Assert;
 
 /**
@@ -32,7 +34,8 @@ final class QuantifiedAssociationUserIntentCollectionApplier implements UserInte
     public function __construct(
         private ObjectUpdaterInterface $productUpdater,
         private GetViewableProducts $getViewableProducts,
-        private GetViewableProductModels $getViewableProductModels
+        private GetViewableProductModels $getViewableProductModels,
+        private Connection $connection
     ) {
     }
 
@@ -60,6 +63,8 @@ final class QuantifiedAssociationUserIntentCollectionApplier implements UserInte
 
             $formerAssociations = $normalizedQuantifiedAssociations[$associationType][$entityType]
                 ?? $this->getFormerAssociations($quantifiedAssociationUserIntent, $product, $entityType);
+
+            // if $quantifiedAssociationUserIntent contains entityQuantity with uuids, transform them in identifiers
 
             $values = match ($quantifiedAssociationUserIntent::class) {
                 AssociateQuantifiedProducts::class, AssociateQuantifiedProductModels::class =>
@@ -126,7 +131,22 @@ final class QuantifiedAssociationUserIntentCollectionApplier implements UserInte
         QuantifiedAssociationUserIntent $quantifiedAssociationUserIntent
     ): ?array {
         if ($quantifiedAssociationUserIntent instanceof AssociateQuantifiedProducts) {
-            $quantifiedEntities = $quantifiedAssociationUserIntent->quantifiedProducts();
+            if ($quantifiedAssociationUserIntent->quantifiedProducts()[0]->entityIdentifierOrUuid() instanceof UuidInterface) {
+                $uuids = \array_map(
+                    fn (QuantifiedEntity $quantifiedEntity) => $quantifiedEntity->entityIdentifierOrUuid(),
+                    $quantifiedAssociationUserIntent->quantifiedProducts()
+                );
+                $identifiers = $this->getIdentifiersFromUuids($uuids);
+                $quantifiedEntities = \array_map(fn (QuantifiedEntity $quantifiedEntity) =>
+                    new QuantifiedEntity(
+                        $identifiers[$quantifiedEntity->entityIdentifierOrUuid()],
+                        $quantifiedEntity->quantity()
+                    ),
+                    $quantifiedAssociationUserIntent->quantifiedProducts()
+                );
+            } else {
+                $quantifiedEntities = $quantifiedAssociationUserIntent->quantifiedProducts();
+            }
         } elseif ($quantifiedAssociationUserIntent instanceof AssociateQuantifiedProductModels) {
             $quantifiedEntities = $quantifiedAssociationUserIntent->quantifiedProductModels();
         } else {
@@ -139,7 +159,7 @@ final class QuantifiedAssociationUserIntentCollectionApplier implements UserInte
 
         $isUpdated = false;
         foreach ($quantifiedEntities as $quantifiedEntity) {
-            $identifier = $quantifiedEntity->entityIdentifier();
+            $identifier = $quantifiedEntity->entityIdentifierOrUuid();
             if (\array_key_exists($identifier, $indexedFormerAssociations)
                 && $indexedFormerAssociations[$identifier]['quantity'] === $quantifiedEntity->quantity()
             ) {
@@ -165,7 +185,11 @@ final class QuantifiedAssociationUserIntentCollectionApplier implements UserInte
         QuantifiedAssociationUserIntent $quantifiedAssociationUserIntent
     ): ?array {
         if ($quantifiedAssociationUserIntent instanceof DissociateQuantifiedProducts) {
-            $entityIdentifiers = $quantifiedAssociationUserIntent->productIdentifiers();
+            if ($quantifiedAssociationUserIntent->productIdentifiersOrUuids()[0] instanceof UuidInterface) {
+                $entityIdentifiers = \array_values($this->getIdentifiersFromUuids($quantifiedAssociationUserIntent->productIdentifiersOrUuids()));
+            } else {
+                $entityIdentifiers = $quantifiedAssociationUserIntent->productIdentifiersOrUuids();
+            }
         } elseif ($quantifiedAssociationUserIntent instanceof DissociateQuantifiedProductModels) {
             $entityIdentifiers = $quantifiedAssociationUserIntent->productModelCodes();
         } else {
@@ -189,7 +213,20 @@ final class QuantifiedAssociationUserIntentCollectionApplier implements UserInte
         int $userId
     ): ?array {
         if ($quantifiedAssociationUserIntent instanceof ReplaceAssociatedQuantifiedProducts) {
-            $quantifiedEntities = $quantifiedAssociationUserIntent->quantifiedProducts();
+            if ($quantifiedAssociationUserIntent->quantifiedProducts()[0]->entityIdentifierOrUuid() instanceof UuidInterface) {
+                $uuids = \array_map(
+                    fn (QuantifiedEntity $quantifiedEntity) => $quantifiedEntity->entityIdentifierOrUuid(),
+                    $quantifiedAssociationUserIntent->quantifiedProducts()
+                );
+                $identifiersForUuid = $this->getIdentifiersFromUuids($uuids);
+                $quantifiedEntities = \array_map(
+                    fn (QuantifiedEntity $quantifiedEntity) => new QuantifiedEntity($identifiersForUuid[$quantifiedEntity->entityIdentifierOrUuid()], $quantifiedEntity->quantity()),
+                    $quantifiedAssociationUserIntent->quantifiedProducts()
+                );
+
+            } else {
+                $quantifiedEntities = $quantifiedAssociationUserIntent->quantifiedProducts();
+            }
         } elseif ($quantifiedAssociationUserIntent instanceof ReplaceAssociatedQuantifiedProductModels) {
             $quantifiedEntities = $quantifiedAssociationUserIntent->quantifiedProductModels();
         } else {
@@ -200,7 +237,7 @@ final class QuantifiedAssociationUserIntentCollectionApplier implements UserInte
         /** @var QuantifiedEntity $quantifiedEntity */
         foreach ($quantifiedEntities as $quantifiedEntity) {
             $newAssociations[] = [
-                'identifier' => $quantifiedEntity->entityIdentifier(),
+                'identifier' => $quantifiedEntity->entityIdentifierOrUuid(),
                 'quantity' => $quantifiedEntity->quantity(),
             ];
         }
@@ -222,5 +259,22 @@ final class QuantifiedAssociationUserIntentCollectionApplier implements UserInte
         ));
 
         return \array_values(\array_merge($newAssociations, $nonViewableFormerAssociations));
+    }
+
+    /**
+     * @param string[] $uuids
+     * @return UuidInterface[]
+     */
+    private function getIdentifiersFromUuids(array $uuids): array
+    {
+        $uuidAsBytes = \array_map(fn (UuidInterface $uuid) => $uuid->getBytes(), $uuids);
+
+        $result = $this->connection->fetchAllAssociative(
+            'SELECT BIN_TO_UUID(uuid) as uuid, identifier FROM pim_catalog_product WHERE uuid in (:uuidAsBytes)',
+            ['uuidAsBytes' => $uuidAsBytes],
+            ['uuidAsBytes' => Connection::PARAM_STR_ARRAY]
+        );
+
+        return \array_map(fn (string $data) => [$data['uuid'] => $data['identifier']], $result);
     }
 }

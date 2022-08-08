@@ -58,11 +58,13 @@ class AssociationFieldSetter extends AbstractFieldSetter
      *     "XSELL": {
      *         "groups": ["group1", "group2"],
      *         "products": ["AKN_TS1", "AKN_TSH2"],
+     *         "product_uuids": ["AKN_TS1", "AKN_TSH2"],
      *         "product_models": ["MODEL_AKN_TS1", "MODEL_AKN_TSH2"]
      *     },
      *     "UPSELL": {
      *         "groups": ["group3", "group4"],
      *         "products": ["AKN_TS3", "AKN_TSH4"],
+     *         "product_uuids": ["AKN_TS1", "AKN_TSH2"],
      *         "product_models": ["MODEL_AKN_TS3 "MODEL_AKN_TSH4"]
      *     },
      * }
@@ -102,26 +104,30 @@ class AssociationFieldSetter extends AbstractFieldSetter
             if (isset($items['groups'])) {
                 $this->updateAssociatedGroups($entity, $associationType, $items['groups']);
             }
+            if (isset($items['product_uuids'])) {
+                $this->updateAssociatedProductUuids($entity, $associationType, $items['product_uuids']);
+            }
         }
     }
 
+    // TODO: be able to handle uuids here
     private function updateAssociatedProducts(
         EntityWithAssociationsInterface $owner,
         AssociationTypeInterface $associationType,
-        array $productsIdentifiers
+        array $productsIdentifiersOrUuids
     ): void {
-        $productsIdentifiers = array_unique($productsIdentifiers);
+        $productsIdentifiersOrUuids = array_unique($productsIdentifiersOrUuids);
         foreach ($owner->getAssociatedProducts($associationType->getCode()) as $associatedProduct) {
-            $index = array_search($associatedProduct->getIdentifier(), $productsIdentifiers);
+            $index = array_search($associatedProduct->getIdentifier(), $productsIdentifiersOrUuids);
 
             if (false === $index) {
                 $this->removeAssociatedProduct($owner, $associatedProduct, $associationType);
             } else {
-                unset($productsIdentifiers[$index]);
+                unset($productsIdentifiersOrUuids[$index]);
             }
         }
 
-        foreach ($productsIdentifiers as $productIdentifier) {
+        foreach ($productsIdentifiersOrUuids as $productIdentifier) {
             $associatedProduct = $this->productRepository->findOneByIdentifier($productIdentifier);
             if (null === $associatedProduct) {
                 throw InvalidPropertyException::validEntityCodeExpected(
@@ -130,6 +136,37 @@ class AssociationFieldSetter extends AbstractFieldSetter
                     'The product does not exist',
                     static::class,
                     $productIdentifier
+                );
+            }
+            $this->addAssociatedProduct($owner, $associatedProduct, $associationType);
+        }
+    }
+
+    private function updateAssociatedProductUuids(
+        EntityWithAssociationsInterface $owner,
+        AssociationTypeInterface $associationType,
+        array $productsUuids
+    ): void {
+        $productsUuids = array_unique($productsUuids);
+        foreach ($owner->getAssociatedProducts($associationType->getCode()) as $associatedProduct) {
+            $index = array_search($associatedProduct->getIdentifier(), $productsUuids);
+
+            if (false === $index) {
+                $this->removeAssociatedProduct($owner, $associatedProduct, $associationType);
+            } else {
+                unset($productsUuids[$index]);
+            }
+        }
+
+        foreach ($productsUuids as $productUuid) {
+            $associatedProduct = $this->productRepository->find($productUuid);
+            if (null === $associatedProduct) {
+                throw InvalidPropertyException::validEntityCodeExpected(
+                    'associations',
+                    'product uuid',
+                    'The product does not exist',
+                    static::class,
+                    $productUuid
                 );
             }
             $this->addAssociatedProduct($owner, $associatedProduct, $associationType);

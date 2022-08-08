@@ -13,13 +13,14 @@ use Webmozart\Assert\Assert;
 final class DissociateQuantifiedProducts implements QuantifiedAssociationUserIntent
 {
     /**
-     * @param string[] $productIdentifiers
+     * @param string[] $productIdentifiersOrUuids
      */
-    public function __construct(private string $associationType, private array $productIdentifiers)
+    public function __construct(private string $associationType, private array $productIdentifiersOrUuids)
     {
         Assert::stringNotEmpty($associationType);
-        Assert::notEmpty($productIdentifiers);
-        Assert::allStringNotEmpty($productIdentifiers);
+        Assert::notEmpty($productIdentifiersOrUuids);
+        // TODO: check if is string not empty or uuid
+        //Assert::allStringNotEmpty($productIdentifiersOrUuids);
     }
 
     public function associationType(): string
@@ -30,8 +31,8 @@ final class DissociateQuantifiedProducts implements QuantifiedAssociationUserInt
     /**
      * @return string[]
      */
-    public function productIdentifiers(): array
+    public function productIdentifiersOrUuids(): array
     {
-        return $this->productIdentifiers;
+        return $this->productIdentifiersOrUuids;
     }
 }

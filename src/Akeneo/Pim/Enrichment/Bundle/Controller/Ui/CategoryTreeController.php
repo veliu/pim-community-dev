@@ -3,8 +3,11 @@
 namespace Akeneo\Pim\Enrichment\Bundle\Controller\Ui;
 
 use Akeneo\Category\Domain\Model\Classification\CategoryTree;
+use Akeneo\Category\Domain\Model\Enrichment\Category;
 use Akeneo\Category\Domain\Query\GetCategoryInterface;
 use Akeneo\Category\Domain\Query\GetCategoryTreesInterface;
+use Akeneo\Category\Domain\ValueObject\CategoryCollection;
+use Akeneo\Category\Domain\ValueObject\CategoryId;
 use Akeneo\Category\Infrastructure\Component\Classification\Model\CategoryInterface;
 use Akeneo\Category\Infrastructure\Component\Classification\Repository\CategoryRepositoryInterface;
 use Akeneo\Category\Infrastructure\Symfony\Form\CategoryFormViewNormalizerInterface;
@@ -167,6 +170,57 @@ class CategoryTreeController extends AbstractController
      *
      */
     public function childrenAction(Request $request)
+    {
+        if (false === $this->securityFacade->isGranted($this->buildAclName('category_list'))) {
+            throw new AccessDeniedException();
+        }
+
+        $parent = $this->getCategory->byId($request->get('id'));
+        if(!$parent) {
+            $parent = $this->userContext->getUserProductCategoryTree();
+        }
+
+        $selectNodeId = $request->get('select_node_id', -1);
+
+        $selectNode = $this->getCategory->byId($selectNodeId);
+
+        if(!$selectNode) {
+            $selectNode = null;
+        } else {
+            if (!$this->getCategory->isAncestor($parent->getId(), $selectNode->getId())) {
+                $selectNode = null;
+            }
+        }
+
+        $categories = $this->getCategory->byParentId($parent->getId());
+
+        $jsonParent = $parent->normalizeChildren($categories);
+        $jsonChildrens = [];
+
+        foreach ($categories->getCategories() as $category) {
+            $childrenCategories = $this->getCategory->byParentId($category->getId());
+            $jsonChildrens[] = $category->normalizeChildren($childrenCategories);
+        }
+
+        $jsonParent['children'] = $jsonChildrens;
+        return new JsonResponse($jsonParent);
+    }
+
+    /**
+     * List children of a category.
+     * The parent category is provided via its id ('id' request parameter).
+     * The node category to select is given by 'select_node_id' request parameter.
+     *
+     * If the node to select is not a direct child of the parent category, the tree
+     * is expanded until the selected node is found amongs the children
+     *
+     * @param Request $request
+     *
+     * @return Response
+     * @throws AccessDeniedException
+     *
+     */
+    public function oldchildrenAction(Request $request)
     {
         if (false === $this->securityFacade->isGranted($this->buildAclName('category_list'))) {
             throw new AccessDeniedException();

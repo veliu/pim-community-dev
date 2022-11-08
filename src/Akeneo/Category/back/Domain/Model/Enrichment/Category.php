@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Akeneo\Category\Domain\Model\Enrichment;
 
+use Akeneo\Category\Domain\ValueObject\CategoryCollection;
 use Akeneo\Category\Domain\ValueObject\CategoryId;
 use Akeneo\Category\Domain\ValueObject\Code;
 use Akeneo\Category\Domain\ValueObject\LabelCollection;
@@ -133,5 +134,59 @@ class Category
             'attributes' => $this->getAttributes()?->normalize(),
             'permissions' => $this->getPermissions()?->normalize(),
         ];
+    }
+
+    /**
+     * Returns category label with|without children count
+     * including|excluding sub-categories
+     *
+     * @param bool              $withCount
+     * @param bool              $includeSub
+     *
+     * @return array{
+     *     attr: array{
+     *       id: string,
+     *       data-code: array<string, string>|null
+     *     },
+     *     data: string,
+     *     state: string
+     * }
+     */
+    public function normalizeChildren(CategoryCollection $categories): array
+    {
+        $state = $this->defineCategoryState($categories);
+        $formatedChildren = [
+            'attr'  => [
+                'id'        => 'node_'. $this->getId()->getValue(),
+                'data-code' => (string) $this->getCode()
+            ],
+            'data'  => $this->getLabel(),
+            'state' => $state,
+//            'templateUuid' => $this->t
+        ];
+        return $formatedChildren;
+    }
+
+
+    /**
+     * Define the state of a category
+     *
+     * @return string
+     */
+    protected function defineCategoryState(?CategoryCollection $categories)
+    {
+        $state = ($categories !== null && count($categories->getCategories()) > 0) ? 'closed' : 'leaf';
+
+        if ($this->isRoot()) {
+            $state .= ' jstree-root';
+        }
+
+        return $state;
+    }
+
+    public function getLabel(): string
+    {
+        $translated = ($this->getLabels()) ? $this->getLabels()->getTranslation('en_US') : null;
+        return ($translated !== '' && $translated !== null) ? $translated : '[' . $this->getCode() . ']';
     }
 }

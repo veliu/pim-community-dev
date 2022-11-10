@@ -1,21 +1,20 @@
 import React, {useCallback} from 'react';
-import {IdentifierGenerator, LabelCollection} from '../models';
+import {LabelCollection} from '../models';
 import {Field, SectionTitle, TextInput} from 'akeneo-design-system';
 import {IdentifierAttributeSelector, LabelTranslations} from '../components';
 import {Styled} from '../components/Styled';
 import {useTranslate} from '@akeneo-pim-community/shared';
+import {useGeneratorEditContext} from '../context/useGeneratorEditContext';
 
-type GeneralPropertiesProps = {
-  generator: IdentifierGenerator;
-  onGeneratorChange: (generator: IdentifierGenerator) => void;
-};
-
-const GeneralPropertiesTab: React.FC<GeneralPropertiesProps> = ({generator, onGeneratorChange}) => {
+const GeneralPropertiesTab: React.FC = () => {
   const translate = useTranslate();
+  const {generator, setGenerator} = useGeneratorEditContext();
 
   const onLabelChange = useCallback(
-    (labels: LabelCollection) => onGeneratorChange({...generator, labels}),
-    [onGeneratorChange, generator]
+    (labels: LabelCollection) => {
+      setGenerator({...generator, labels: labels});
+    },
+    [generator, setGenerator]
   );
 
   return (

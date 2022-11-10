@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {useParams} from 'react-router-dom';
 import {EditGeneratorPage} from '../pages/';
 import {useGetIdentifierGenerator} from '../hooks';
@@ -6,11 +6,20 @@ import {LoaderIcon, Placeholder, ServerErrorIllustration} from 'akeneo-design-sy
 import {IdentifierGeneratorNotFound} from '../errors';
 import {Styled} from '../components/Styled';
 import {useTranslate} from '@akeneo-pim-community/shared';
+import {GeneratorEditProvider} from '../context/GeneratorEditProvider';
+import {useIdentifierGeneratorContext} from '../context/useIdentifierGeneratorContext';
 
-const Edit: React.FC<{}> = () => {
+const Edit: React.FC = () => {
   const translate = useTranslate();
   const {identifierGeneratorCode} = useParams<{identifierGeneratorCode: string}>();
-  const {data: identifierGenerator, error} = useGetIdentifierGenerator(identifierGeneratorCode);
+  const {data, error} = useGetIdentifierGenerator(identifierGeneratorCode);
+  const {unsavedChanges} = useIdentifierGeneratorContext();
+
+  useEffect(() => {
+    return () => {
+      unsavedChanges.setHasUnsavedChanges(false);
+    };
+  }, [unsavedChanges]);
 
   if (error) {
     let title = translate('pim_error.general');
@@ -30,7 +39,7 @@ const Edit: React.FC<{}> = () => {
     );
   }
 
-  if (typeof identifierGenerator === 'undefined') {
+  if (typeof data === 'undefined') {
     return (
       <Styled.FullPageCenteredContent>
         <LoaderIcon data-testid={'loadingIcon'} />
@@ -38,7 +47,11 @@ const Edit: React.FC<{}> = () => {
     );
   }
 
-  return <EditGeneratorPage initialGenerator={identifierGenerator} />;
+  return (
+    <GeneratorEditProvider initialGenerator={data}>
+      <EditGeneratorPage />
+    </GeneratorEditProvider>
+  );
 };
 
 export {Edit};

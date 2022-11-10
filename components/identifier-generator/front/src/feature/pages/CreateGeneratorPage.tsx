@@ -4,18 +4,16 @@ import {CreateOrEditGeneratorPage} from './CreateOrEditGeneratorPage';
 import {NotificationLevel, useNotify, useTranslate} from '@akeneo-pim-community/shared';
 import {useHistory} from 'react-router-dom';
 import {useCreateIdentifierGenerator} from '../hooks';
+import {useGeneratorEditContext} from '../context/useGeneratorEditContext';
 
-type CreateGeneratorProps = {
-  initialGenerator: IdentifierGenerator;
-};
-
-const CreateGeneratorPage: React.FC<CreateGeneratorProps> = ({initialGenerator}) => {
+const CreateGeneratorPage: React.FC = () => {
   const notify = useNotify();
   const translate = useTranslate();
   const history = useHistory();
   const {mutate, error, isLoading} = useCreateIdentifierGenerator();
+  const {generator} = useGeneratorEditContext();
 
-  const onSave = (generator: IdentifierGenerator) => {
+  const onSave = () => {
     mutate(generator, {
       onError: error => {
         // @ts-ignore
@@ -38,7 +36,6 @@ const CreateGeneratorPage: React.FC<CreateGeneratorProps> = ({initialGenerator})
   return (
     <CreateOrEditGeneratorPage
       isMainButtonDisabled={isLoading}
-      initialGenerator={initialGenerator}
       mainButtonCallback={onSave}
       validationErrors={error?.violations || []}
       isNew={true}

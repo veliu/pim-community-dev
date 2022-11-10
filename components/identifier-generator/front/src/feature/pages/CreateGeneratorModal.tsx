@@ -1,13 +1,13 @@
 import React, {useCallback, useState} from 'react';
 import {AttributesIllustration, Button, Field, Modal, TextInput} from 'akeneo-design-system';
-import {IdentifierGenerator, PROPERTY_NAMES} from '../models';
 import {useTranslate, useUserContext} from '@akeneo-pim-community/shared';
 import {Styled} from '../components/Styled';
 import {useIdentifierAttributes} from '../hooks';
+import {useGeneratorEditContext} from '../context/useGeneratorEditContext';
 
 type CreateGeneratorModalProps = {
   onClose: () => void;
-  onSave: (value: IdentifierGenerator) => void;
+  onSave: () => void;
 };
 
 const CreateGeneratorModal: React.FC<CreateGeneratorModalProps> = ({onClose, onSave}) => {
@@ -26,6 +26,7 @@ const CreateGeneratorModal: React.FC<CreateGeneratorModalProps> = ({onClose, onS
   const translate = useTranslate();
   const userContext = useUserContext();
   const uiLocale = userContext.get('uiLocale');
+  const {generator, setGenerator} = useGeneratorEditContext();
 
   const onLabelChange = useCallback(
     (value: string) => {
@@ -42,17 +43,15 @@ const CreateGeneratorModal: React.FC<CreateGeneratorModalProps> = ({onClose, onS
 
   const onConfirm = useCallback(() => {
     if (target) {
-      onSave({
+      setGenerator({
+        ...generator,
         code,
         target,
-        labels: {[uiLocale]: label},
-        conditions: [],
-        // Temporary
-        structure: [{type: PROPERTY_NAMES.FREE_TEXT, string: 'AKN'}],
-        delimiter: null,
+        labels: {[uiLocale]: label}
       });
+      onSave();
     }
-  }, [code, label, onSave, uiLocale, target]);
+  }, [target, setGenerator, generator, code, uiLocale, label, onSave]);
 
   const isFormInvalid = React.useMemo(() => code === '', [code]);
 

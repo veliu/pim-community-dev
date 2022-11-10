@@ -2,6 +2,7 @@ import React from 'react';
 import {fireEvent, render, screen} from '../../tests/test-utils';
 import {IdentifierGenerator} from '../../models';
 import {GeneralPropertiesTab} from '../GeneralPropertiesTab';
+import {GeneratorEditProvider} from '../../context/GeneratorEditProvider';
 
 jest.mock('../../components/LabelTranslations');
 
@@ -11,8 +12,7 @@ describe('GeneralProperties', () => {
       code: 'initialCode',
       labels: {},
     };
-    const onGeneratorChange = jest.fn();
-    render(<GeneralPropertiesTab generator={generator} onGeneratorChange={onGeneratorChange} />);
+    render(<GeneratorEditProvider initialGenerator={generator}><GeneralPropertiesTab /></GeneratorEditProvider>);
     expect(screen.getByText('pim_identifier_generator.general.title')).toBeInTheDocument();
     expect(screen.getByText('pim_common.code')).toBeInTheDocument();
     expect(screen.getByTitle('initialCode')).toBeInTheDocument();
@@ -24,7 +24,9 @@ describe('GeneralProperties', () => {
       labels: {},
     };
     const onGeneratorChange = jest.fn();
-    render(<GeneralPropertiesTab generator={generator} onGeneratorChange={onGeneratorChange} />);
+    render(<GeneratorEditProvider initialGenerator={generator}>
+      <GeneralPropertiesTab />
+    </GeneratorEditProvider>);
     expect(screen.getByText('LabelTranslationsMock')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Update French Label'));
     expect(onGeneratorChange).toBeCalledWith({

@@ -1,6 +1,7 @@
 import {useMutation, useQueryClient} from 'react-query';
 import {NotificationLevel, useNotify, useRouter, useTranslate} from '@akeneo-pim-community/shared';
 import {IdentifierGenerator} from '../models';
+import {useGeneratorEditContext} from '../context/useGeneratorEditContext';
 
 type ErrorResponse = {
   path: string,
@@ -9,7 +10,7 @@ type ErrorResponse = {
 
 type HookResponse = {
   isLoading: boolean,
-  save: (generator: IdentifierGenerator) => void,
+  save: () => void,
   error: ErrorResponse
 }
 
@@ -18,6 +19,7 @@ const useSaveGenerator = (): HookResponse => {
   const queryClient = useQueryClient();
   const notify = useNotify();
   const translate = useTranslate();
+  const {generator} = useGeneratorEditContext();
 
   const callSave = async (generator: IdentifierGenerator) => {
     const res = await fetch(router.generate('akeneo_identifier_generator_rest_update', {code: generator.code}), {
@@ -35,7 +37,7 @@ const useSaveGenerator = (): HookResponse => {
 
   const {mutate, isLoading, error} = useMutation<IdentifierGenerator, ErrorResponse, IdentifierGenerator>(callSave);
 
-  const save = (generator: IdentifierGenerator) => mutate(generator, {
+  const save = () => mutate(generator, {
     onError: () => {
       notify(NotificationLevel.ERROR, translate('pim_identifier_generator.flash.create.error', {code: generator.code}));
     },

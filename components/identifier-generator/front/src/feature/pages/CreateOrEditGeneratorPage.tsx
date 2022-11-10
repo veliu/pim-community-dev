@@ -1,12 +1,13 @@
 import React, {useCallback, useState} from 'react';
 import {Button, Helper, TabBar, useBooleanState} from 'akeneo-design-system';
-import {PageContent, PageHeader, SecondaryActions, useTranslate} from '@akeneo-pim-community/shared';
+import {PageContent, PageHeader, SecondaryActions, UnsavedChanges, useTranslate} from '@akeneo-pim-community/shared';
 import {GeneralPropertiesTab, Structure} from '../tabs';
 import {IdentifierGenerator, IdentifierGeneratorCode} from '../models';
 import {Violation} from '../validators/Violation';
 import {Header} from '../components';
 import {DeleteGeneratorModal} from './DeleteGeneratorModal';
 import {useHistory} from 'react-router-dom';
+import {useIdentifierGeneratorContext} from '../context/useIdentifierGeneratorContext';
 
 enum Tabs {
   GENERAL,
@@ -35,6 +36,7 @@ const CreateOrEditGeneratorPage: React.FC<CreateOrEditGeneratorProps> = ({
   const [generator, setGenerator] = useState<IdentifierGenerator>(initialGenerator);
   const changeTab = useCallback(tabName => () => setCurrentTab(tabName), []);
   const onSave = useCallback(() => mainButtonCallback(generator), [generator, mainButtonCallback]);
+  const identifierGeneratorContext = useIdentifierGeneratorContext();
 
   const [generatorCodeToDelete, setGeneratorCodeToDelete] = useState<IdentifierGeneratorCode | undefined>();
   const [isDeleteGeneratorModalOpen, openDeleteGeneratorModal, closeDeleteGeneratorModal] = useBooleanState();
@@ -63,6 +65,7 @@ const CreateOrEditGeneratorPage: React.FC<CreateOrEditGeneratorProps> = ({
             </SecondaryActions>
           )}
           <Button disabled={isMainButtonDisabled} onClick={onSave}>{translate('pim_common.save')}</Button>
+          {identifierGeneratorContext.unsavedChanges.hasUnsavedChanges && <UnsavedChanges/>}
         </PageHeader.Actions>
       </Header>
       <PageContent>

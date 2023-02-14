@@ -18,3 +18,10 @@ pim_category_template_rest_create:
         _controller: Akeneo\Category\Infrastructure\Controller\InternalApi\CreateTemplateController
         _feature: enriched_category
     methods: [POST]
+
+pim_category_template_attributes_rest_delete:
+    path: /rest/{templateUuid}/attributes
+    defaults:
+        _controller: Akeneo\Category\Infrastructure\Controller\InternalApi\DeleteTemplateAttributesController
+        _feature: enriched_category
+    methods: [DELETE]

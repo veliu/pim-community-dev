@@ -162,7 +162,7 @@ class Category
         $this->labels->setTranslation($localeCode, $label);
     }
 
-    public function setAttributes(ValueCollection $attributes): void
+    public function setAttributes(?ValueCollection $attributes): void
     {
         $this->attributes = $attributes;
     }

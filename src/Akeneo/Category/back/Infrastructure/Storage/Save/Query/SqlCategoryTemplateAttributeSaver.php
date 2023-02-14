@@ -35,6 +35,28 @@ class SqlCategoryTemplateAttributeSaver implements CategoryTemplateAttributeSave
 
     /**
      * @param array<Attribute> $attributes
+     */
+    public function delete(array $attributes): void
+    {
+        $attributesUuids = array_map(fn(Attribute $attribute) => $attribute->getUuid()->toBytes(), $attributes);
+        $query = <<< SQL
+            DELETE FROM pim_catalog_category_attribute
+            WHERE uuid IN (:attribute_uuids);
+        SQL;
+
+        $this->connection->executeQuery(
+            $query,
+            [
+                'attribute_uuids' => $attributesUuids,
+            ],
+            [
+                'attribute_uuids' => Connection::PARAM_STR_ARRAY,
+            ],
+        );
+    }
+
+    /**
+     * @param array<Attribute> $attributes
      *
      * @return void
      *

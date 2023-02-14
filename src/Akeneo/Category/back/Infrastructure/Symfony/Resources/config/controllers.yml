@@ -65,6 +65,17 @@ services:
             - '@Akeneo\Category\Domain\Query\GetCategoryInterface'
             - '@Akeneo\Category\Application\ActivateTemplate'
 
+    Akeneo\Category\Infrastructure\Controller\InternalApi\DeleteTemplateAttributesController:
+        public: true
+        arguments:
+            - '@oro_security.security_facade'
+            - '@Akeneo\Category\Application\Query\GetAttribute'
+            - '@Akeneo\Category\Application\Storage\Save\Saver\CategoryTemplateAttributeSaver'
+            - '@Akeneo\Category\Application\Query\GetCategoryTreeByCategoryTemplate'
+            - '@Akeneo\Category\Domain\Query\GetCategoryInterface'
+            - '@Akeneo\Category\Application\Query\GetCategoryChildrenIds'
+            - '@Akeneo\Category\Application\Storage\Save\Saver\CategoryBaseSaver'
+
     Akeneo\Category\Infrastructure\Controller\InternalApi\UploadController:
         public: true
         arguments:

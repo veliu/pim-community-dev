@@ -17,4 +17,6 @@ interface Clock
     public function fromString(string $date): \DateTimeImmutable;
 
     public function fromTimestamp(int $timestamp): \DateTimeImmutable;
+
+    public function fromUTCFormat(string $dateString): \DateTimeImmutable;
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Akeneo\Pim\Automation\DataQualityInsights\Infrastructure\Clock;
 
 use Akeneo\Pim\Automation\DataQualityInsights\Application\Clock;
+use Webmozart\Assert\Assert;
 
 /**
  * @copyright 2019 Akeneo SAS (http://www.akeneo.com)
@@ -32,5 +33,13 @@ final class SystemClock implements Clock
     public function fromTimestamp(int $timestamp): \DateTimeImmutable
     {
         return (new \DateTimeImmutable())->setTimestamp($timestamp);
+    }
+
+    public function fromUTCFormat(string $dateString): \DateTimeImmutable
+    {
+        $datetime = \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $dateString, $this->timeZone);
+        Assert::isInstanceOf($datetime, \DateTimeImmutable::class, sprintf('Failed to build a datetime from a string in UTC format "%s"', $dateString));
+
+        return $datetime;
     }
 }

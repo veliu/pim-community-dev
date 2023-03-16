@@ -34,12 +34,4 @@ final class SystemClock implements Clock
     {
         return (new \DateTimeImmutable())->setTimestamp($timestamp);
     }
-
-    public function fromUTCFormat(string $dateString): \DateTimeImmutable
-    {
-        $datetime = \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $dateString, $this->timeZone);
-        Assert::isInstanceOf($datetime, \DateTimeImmutable::class, sprintf('Failed to build a datetime from a string in UTC format "%s"', $dateString));
-
-        return $datetime;
-    }
 }

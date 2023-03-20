@@ -11,6 +11,8 @@ services:
             - '@akeneo.pim.automation.data_quality_insights.create_products_criteria_evaluations'
             - '@logger'
             - '@Akeneo\Pim\Automation\DataQualityInsights\Application\ProductUuidFactory'
+            - '@messenger.bus.default'
+            - '@Akeneo\Pim\Automation\DataQualityInsights\Infrastructure\Clock\SystemClock'
         tags:
             - { name: kernel.event_subscriber }
 

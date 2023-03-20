@@ -3,16 +3,20 @@ declare(strict_types=1);
 
 namespace Akeneo\Pim\Automation\DataQualityInsights\Infrastructure\Subscriber\Product;
 
+use Akeneo\Pim\Automation\DataQualityInsights\Application\Clock;
 use Akeneo\Pim\Automation\DataQualityInsights\Application\ProductEntityIdFactoryInterface;
 use Akeneo\Pim\Automation\DataQualityInsights\Application\ProductEvaluation\CreateCriteriaEvaluations;
+use Akeneo\Pim\Automation\DataQualityInsights\Domain\ValueObject\ProductUuid;
+use Akeneo\Pim\Automation\DataQualityInsights\Domain\ValueObject\ProductUuidCollection;
+use Akeneo\Pim\Automation\DataQualityInsights\Infrastructure\Messenger\LaunchProductAndProductModelEvaluationsMessage;
 use Akeneo\Pim\Enrichment\Component\Product\Model\ProductInterface;
 use Akeneo\Platform\Bundle\FeatureFlagBundle\FeatureFlag;
 use Akeneo\Tool\Component\StorageUtils\StorageEvents;
-use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\UuidInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * @copyright 2020 Akeneo SAS (http://www.akeneo.com)
@@ -24,7 +28,9 @@ final class InitializeEvaluationOfAProductSubscriber implements EventSubscriberI
         private FeatureFlag                     $dataQualityInsightsFeature,
         private CreateCriteriaEvaluations       $createProductsCriteriaEvaluations,
         private LoggerInterface                 $logger,
-        private ProductEntityIdFactoryInterface $idFactory
+        private ProductEntityIdFactoryInterface $idFactory,
+        private readonly MessageBusInterface $messageBus,
+        private readonly Clock $clock,
     ) {
     }
 
@@ -33,6 +39,7 @@ final class InitializeEvaluationOfAProductSubscriber implements EventSubscriberI
         return [
             // Priority greater than zero to ensure that the evaluation is done prior to the re-indexation of the product in ES
             StorageEvents::POST_SAVE => ['onPostSave', 10],
+            StorageEvents::POST_SAVE_ALL => 'onPostSaveAll',
         ];
     }
 
@@ -51,7 +58,57 @@ final class InitializeEvaluationOfAProductSubscriber implements EventSubscriberI
             return;
         }
 
-        $this->initializeCriteria($subject->getUuid());
+        $productUuidCollection = ProductUuidCollection::fromProductUuids([
+            ProductUuid::fromUuid($subject->getUuid())
+        ]);
+
+        $this->launchMessage($productUuidCollection);
+
+        //$this->initializeCriteria($subject->getUuid());
+    }
+
+    public function onPostSaveAll(GenericEvent $event): void
+    {
+        $products = $event->getSubject();
+        if (!is_array($products)) {
+            return;
+        }
+
+        $products = array_filter(
+            $products,
+            fn ($product) => $product instanceof ProductInterface
+        );
+
+        if (empty($products)) {
+            return;
+        }
+
+        $productUuidCollection = ProductUuidCollection::fromProductUuids(array_map(
+            fn (ProductInterface $product) => ProductUuid::fromUuid($product->getUuid()),
+            $products
+        ));
+
+        $this->launchMessage($productUuidCollection);
+    }
+
+    private function launchMessage(ProductUuidCollection $productUuidCollection): void
+    {
+        $datetime = $this->clock->getCurrentTime();
+        try {
+            $message = LaunchProductAndProductModelEvaluationsMessage::forProductsOnly(
+                $datetime,
+                $productUuidCollection,
+                [],
+            );
+            $this->messageBus->dispatch($message);
+            $this->logger->debug('DQI - message sent from subscriber');
+        } catch (\Throwable $exception) {
+            $this->logger->error('DQI - Failed to send message for products evaluations', [
+                'error_message' => $exception->getMessage(),
+                'product_uuids' => $productUuidCollection->toArrayString(),
+                'date_time' => $datetime->format('c')
+            ]);
+        }
     }
 
     private function initializeCriteria(UuidInterface $productUuid): void

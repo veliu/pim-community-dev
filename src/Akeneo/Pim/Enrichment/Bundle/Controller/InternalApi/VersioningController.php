@@ -20,6 +20,8 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  */
 class VersioningController
 {
+    const MAX_RESULT = 20;
+
     public function __construct(
         private readonly VersionRepositoryInterface $versionRepository,
         private readonly FQCNResolver $FQCNResolver,
@@ -47,7 +49,7 @@ class VersioningController
 
         return new JsonResponse(
             $this->normalizer->normalize(
-                $this->versionRepository->getLogEntries($this->FQCNResolver->getFQCN($entityType), $entityId, $entityUuid),
+                $this->versionRepository->getLogEntries($this->FQCNResolver->getFQCN($entityType), $entityId, $entityUuid, self::MAX_RESULT),
                 'internal_api'
             )
         );

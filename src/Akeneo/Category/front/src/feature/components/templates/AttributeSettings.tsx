@@ -1,5 +1,5 @@
 import {Button, Field, SectionTitle, TextInput, useBooleanState} from 'akeneo-design-system';
-import {Attribute} from '../../models';
+import {Attribute, LocaleCollection} from '../../models';
 import React from 'react';
 import {userContext, useTranslate} from '@akeneo-pim-community/shared';
 import styled from 'styled-components';
@@ -8,7 +8,7 @@ import {getLabelFromAttribute} from '../attributes';
 
 type Props = {
   attribute: Attribute;
-  locales: string[];
+  locales: LocaleCollection;
 };
 
 export const AttributeSettings = ({attribute, locales}: Props) => {
@@ -38,9 +38,9 @@ export const AttributeSettings = ({attribute, locales}: Props) => {
             </SectionTitle.Title>
         </SectionTitle>
         <LabelTranslationsContainer>
-            {locales !== null && locales.map((value, index): JSX.Element => (
-                <TranslationField label={''} locale={value} key={index}>
-                    <TextInput readOnly onChange={() => {}} value={attribute.labels[value] || ''}></TextInput>
+            {locales !== null && locales.map((locale, index): JSX.Element => (
+                <TranslationField label={locale.label} locale={locale.code} key={index}>
+                    <TextInput readOnly onChange={() => {}} value={attribute.labels[locale.code] || ''}></TextInput>
                 </TranslationField>
             ))}
         </LabelTranslationsContainer>

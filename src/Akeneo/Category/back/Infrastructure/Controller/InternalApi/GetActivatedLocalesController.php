@@ -8,6 +8,7 @@ use Akeneo\Channel\API\Query\FindLocales;
 use Akeneo\Channel\API\Query\Locale;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Intl\Locales;
 
 /**
  * @copyright 2023 Akeneo SAS (https://www.akeneo.com)
@@ -23,8 +24,13 @@ class GetActivatedLocalesController
     public function __invoke()
     {
         $locales = $this->findLocales->findAllActivated();
-        $localeCodes = array_map(fn (Locale $locale) => $locale->getCode(), $locales);
-
+        $localeCodes = array_map(
+            fn (Locale $locale) => [
+                'code' => $locale->getCode(),
+                'label' => Locales::getName($locale->getCode()),
+            ],
+            $locales,
+        );
         return new JsonResponse($localeCodes, Response::HTTP_OK);
     }
 }

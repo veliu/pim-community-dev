@@ -107,6 +107,13 @@ services:
             - { name: 'akeneo.pim.zdd_migration' }
         public: true
 
+    Akeneo\Pim\Enrichment\Bundle\Command\ZddMigrations\V20230413155005FixCompletenessWithoutAutoIncrement:
+        arguments:
+            - '@database_connection'
+        tags:
+            - { name: 'akeneo.pim.zdd_migration' }
+        public: true
+
     Akeneo\Pim\Enrichment\Bundle\Command\CleanRemovedProductsCommand:
         arguments:
             - '@akeneo.pim.enrichment.elasticsearch.indexer.product_and_ancestors'

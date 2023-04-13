@@ -248,7 +248,12 @@ class AttributeRepository extends EntityRepository implements IdentifiableObject
      */
     public function getIdentifier()
     {
-        return $this->findOneBy(['type' => AttributeTypes::IDENTIFIER]);
+        // TODO CPM-1053
+        if ($this->isPreviousDatabaseVersion()) {
+            return $this->findOneBy(['type' => AttributeTypes::IDENTIFIER, 'mainIdentifier' => true]);
+        } else {
+            return $this->findOneBy(['type' => AttributeTypes::IDENTIFIER]);
+        }
     }
 
     /**
@@ -257,12 +262,18 @@ class AttributeRepository extends EntityRepository implements IdentifiableObject
     public function getIdentifierCode()
     {
         if (null === $this->identifierCode) {
-            $code = $this->createQueryBuilder('a')
+            $query = $this->createQueryBuilder('a')
                 ->select('a.code')
                 ->andWhere('a.type = :type')
                 ->setParameter('type', AttributeTypes::IDENTIFIER)
-                ->setMaxResults(1)
-                ->getQuery()->getSingleResult(Query::HYDRATE_SINGLE_SCALAR);
+                ->setMaxResults(1);
+
+            // TODO CPM-1053
+            if ($this->isPreviousDatabaseVersion()) {
+                $query->andWhere('a.mainIdentifier = TRUE');
+            }
+
+            $code = $query->getQuery()->getSingleResult(Query::HYDRATE_SINGLE_SCALAR);
 
             $this->identifierCode = $code;
         }
@@ -364,5 +375,13 @@ class AttributeRepository extends EntityRepository implements IdentifiableObject
             ->setParameter(':family', $family->getId());
 
         return $qb->getQuery()->getResult();
+    }
+
+    // TODO CPM-1053
+    private function isPreviousDatabaseVersion(): bool
+    {
+        $metadata = $this->getEntityManager()->getClassMetadata($this->_entityName);
+
+        return $metadata->hasField('mainIdentifier');
     }
 }

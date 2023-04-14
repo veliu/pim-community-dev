@@ -34,6 +34,7 @@ services:
     class: '\Akeneo\Pim\Automation\IdentifierGenerator\Infrastructure\Repository\SqlReferenceEntityNomenclatureRepository'
     arguments:
       - '@database_connection'
+      - '@akeneo.pim.structure.query.get_attributes'
 
   Akeneo\Pim\Automation\IdentifierGenerator\Domain\Query\ReorderIdentifierGenerators:
     class: 'Akeneo\Pim\Automation\IdentifierGenerator\Infrastructure\Query\SqlReorderIdentifierGenerators'
